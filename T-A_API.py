@@ -255,14 +255,15 @@ def import_hist_sm(clim_start_year, clim_end_year, sm_hist_url, file_path):
 #------------------------------------------------------------------------------
 def extract_to_roi(beta_poi, beta_full, precip_hist_xr, beta_hist_xr, lon_min, lon_max, lat_min, lat_max, lon_point, lat_point, weights):
     
-    lons = beta_poi["longitude"]
-    lats = beta_poi["latitude"]
+    lons = beta_poi["longitude"].values
+    lats = beta_poi["latitude"].values
     
     if lon_point == "NA": # if considering a region
-        lon_min_ind = find_lon_lat_ind(lons, lon_min)
-        lon_max_ind = find_lon_lat_ind(lons, lon_max)
-        lat_min_ind = find_lon_lat_ind(lats, lat_min)
-        lat_max_ind = find_lon_lat_ind(lats, lat_max)
+        #lon_min_ind = find_lon_lat_ind(lons, lon_min)
+        lon_min_ind = find_nearest(lons, lon_min)
+        lon_max_ind = find_nearest(lons, lon_max)
+        lat_min_ind = find_nearest(lats, lat_min)
+        lat_max_ind = find_nearest(lats, lat_max)
     else: # if considering a point
         lon_min_ind = find_lon_lat_ind(lons, lon_point)
         lon_max_ind = find_lon_lat_ind(lons, lon_point) # duplicated because we need the min and max for the splice
@@ -290,6 +291,14 @@ def find_lon_lat_ind(array, point):
             ind = int(np.where(array==array[i-1])[0])
             break
     return ind
+
+
+def find_nearest(array, value):
+    array = np.asarray(array)
+    idx = (np.abs(array - value)).argmin()
+    return idx
+
+
 #------------------------------------------------------------------------------
 # Weighting
 #------------------------------------------------------------------------------
