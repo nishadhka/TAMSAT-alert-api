@@ -31,9 +31,9 @@ import get_file_path
 # Path of current .py file (all data and outputs will be saved here)
 file_path = os.path.dirname(get_file_path.__file__)
 # SM historical data
-sm_hist_url = 'http://gws-access.jasmin.ac.uk/public/odanceo/tamsat_alert/historical/'
+sm_hist_url = 'http://gws-access.jasmin.ac.uk/public/tamsat/tamsat_alert/historical/'
 # SM forecast data
-sm_fcast_url = 'http://gws-access.jasmin.ac.uk/public/odanceo/tamsat_alert/forecasts/'
+sm_fcast_url = 'http://gws-access.jasmin.ac.uk/public/tamsat/tamsat_alert/forecasts/'
 # RFE data
 rfe_url = 'http://gws-access.jasmin.ac.uk/public/tamsat/tamsat_alert_forcing_data/subset/Africa/0.25/yearly_files/'
 
@@ -115,6 +115,7 @@ def import_forecast_data(poi_start, poi_end, forecast_date, sm_hist_url, sm_fcas
         fcast_dates.append(fdate)
     fcast_file = min(fcast_dates, key=lambda x: abs(x - forecast_date))
     fcast_stamp = fcast_file.strftime("%Y%m%d")
+    fcast_stamp = forecast_date.strftime("%Y%m%d")
     
     # Reset forecast date depending on latest available forecast data
     forecast_date = dtmod.datetime.strptime(fcast_stamp, "%Y%m%d")
@@ -122,8 +123,10 @@ def import_forecast_data(poi_start, poi_end, forecast_date, sm_hist_url, sm_fcas
     # Import relevant forecast file
     url = sm_fcast_url + 'alert_' + fcast_stamp + '_ens.daily.nc'
     fname = file_path + '/forecasts/alert_' + fcast_stamp + '_ens.daily.nc'
+    print(f'##########Forecast files going to be used is {fname}')
     if os.path.isfile(fname) == False:
         print("Retrieving forecast files... This can take several minutes")
+        print(url, fname)
         urllib.request.urlretrieve(url, fname)
     fcast_df = xr.open_dataset(fname)
     fcast_df = fcast_df.assign_coords({"ens_year": np.arange(clim_start_year, clim_end_year+1, 1)})
@@ -143,10 +146,11 @@ def import_forecast_data(poi_start, poi_end, forecast_date, sm_hist_url, sm_fcas
     for i in np.arange(0, len(hist_df_yr)):
         url = sm_hist_url + 'sm_data.daily.' + str(hist_df_yr[i]) + '.nc'
         fname = file_path + '/historical/sm_data.daily.' + str(hist_df_yr[i]) + '.nc'
-        if os.path.isfile(fname) == True:
-            os.remove(fname)
-        print("Updating historic files...")
-        urllib.request.urlretrieve(url, fname)
+        if os.path.isfile(fname) == False:
+            #os.remove(fname)
+            print(url,fname)
+            print("Updating historic files...")
+            urllib.request.urlretrieve(url, fname)
         hist_df.append(xr.open_dataset(fname))
     # Concatenate historical data if the historic period spans the year boundary
     if len(hist_df) > 1:
