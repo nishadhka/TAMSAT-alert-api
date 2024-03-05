@@ -22,6 +22,7 @@ import urllib.request
 import requests
 from bs4 import BeautifulSoup
 import get_file_path
+from cartopy.io.shapereader import Reader
 
 #20210120 20210301 20210531 0.33 0.34 0.33 region 33.5 42.0 -4.8 5.5
 
@@ -329,7 +330,10 @@ def weight_forecast(precip_hist_roi, met_forc_start_date, met_forc_end_date, poi
                                               dims = ['longitude','latitude','time','ens_year'])
     
     # Fill dates and splice to period to which weighting applies
-    precip_hist_roi_reshape_xr = precip_hist_roi_reshape_xr.assign_coords({"time": pd.date_range(start = dtmod.datetime(poi_start.year,1,1), end = dtmod.datetime(poi_start.year+1,12,31))}) # dates only for current year
+    #precip_hist_roi_reshape_xr = precip_hist_roi_reshape_xr.assign_coords({"time": pd.date_range(start = dtmod.datetime(poi_start.year,1,1), end = dtmod.datetime(poi_start.year+1,12,31))}) # dates only for current year
+    #special case of year 2023 to 2024
+    precip_hist_roi_reshape_xr = precip_hist_roi_reshape_xr.assign_coords({"time": pd.date_range(start = dtmod.datetime(poi_start.year,1,1), end = dtmod.datetime(poi_start.year+1,12,30))}) # dates only for current year
+
     precip_poi_roi = precip_hist_roi_reshape_xr.sel(time = slice(met_forc_start_date, met_forc_end_date))
        
     # Calculate annual mean precip for poi 
@@ -398,7 +402,7 @@ def calc_sm_climatology(beta_hist_roi, clim_start_year, clim_end_year, forecast_
                                             coords = [longitude, latitude, times, clim_years],
                                             dims = ['longitude','latitude','time','ens_year'])
     # Fill dates and splice to period to which weighting applies
-    beta_hist_roi_reshape_xr = beta_hist_roi_reshape_xr.assign_coords({"time":pd.date_range(start = dtmod.datetime(poi_start.year,1,1), end = dtmod.datetime(poi_start.year+1,12,31))})
+    beta_hist_roi_reshape_xr = beta_hist_roi_reshape_xr.assign_coords({"time":pd.date_range(start = dtmod.datetime(poi_start.year,1,1), end = dtmod.datetime(poi_start.year+1,12,30))})
     beta_hist_poi_roi = beta_hist_roi_reshape_xr.sel(time = slice(poi_start, poi_end))
     
     # Splice to full period - if forecast date before poi start
@@ -602,9 +606,12 @@ def anom_map_plot(clim_mean_wrsi_xr, ens_mean_wrsi_xr, poi_stamp, forecast_stamp
     RdBu_cust = matplotlib.cm.get_cmap("RdBu")
     RdBu_cust.set_bad(color = "silver")
     # Build plot
-    fig = plt.figure(figsize = (32,10))
+    #fig = plt.figure(figsize = (32,10))
     # Plot climatology
-    clim_plt = fig.add_subplot(131, projection = ccrs.PlateCarree())
+    fname='/home/ea_ghcf_icpac.shp'
+    cntr_bound_geom=Reader(fname).geometries()
+    fig = plt.figure(figsize = (10,10))
+    clim_plt = fig.add_subplot(111, projection = ccrs.PlateCarree())
     clim_plt.set_extent([np.min(lons), np.max(lons), np.min(lats), np.max(lats)])
     clim_plt.pcolormesh(lons, lats, clim_mean_wrsi_xr.T, vmin = 0, vmax = vmax, cmap = BrBG_cust)
     clim_gl = clim_plt.gridlines(crs = ccrs.PlateCarree(), draw_labels = True, linewidth = 0.7, color = "black", alpha = 1, linestyle = "--")
@@ -621,9 +628,13 @@ def anom_map_plot(clim_mean_wrsi_xr, ens_mean_wrsi_xr, poi_stamp, forecast_stamp
     clim_plt.set_aspect("auto", adjustable = None)
     clim_plt.add_feature(cfeature.OCEAN, facecolor = "white", zorder = 1)
     clim_plt.add_feature(cfeature.COASTLINE, linewidth = 2)
-    clim_plt.add_feature(cfeature.BORDERS, linewidth = 2)
+    #clim_plt.add_feature(cfeature.BORDERS, linewidth = 2)
+    clim_plt.add_geometries(cntr_bound_geom,ccrs.PlateCarree(),facecolor='None', linewidth = 2)
+    plt.savefig(file_path+"/outputs/clim_map_plot"+poi_stamp+"_"+forecast_stamp+"_"+loc_stamp+".png")
+    plt.close()
     # Plot forecast
-    ens_plt = fig.add_subplot(132, projection = ccrs.PlateCarree())
+    fig = plt.figure(figsize = (10,10))
+    ens_plt = fig.add_subplot(111, projection = ccrs.PlateCarree())
     ens_plt.set_extent([np.min(lons), np.max(lons), np.min(lats), np.max(lats)])
     ens_plt.pcolormesh(lons, lats, ens_mean_wrsi_xr.T, vmin = 0, vmax = vmax, cmap = BrBG_cust)
     ens_gl = ens_plt.gridlines(crs = ccrs.PlateCarree(), draw_labels = True, linewidth = 0.7, color = "black", alpha = 1, linestyle = "--")
@@ -640,9 +651,14 @@ def anom_map_plot(clim_mean_wrsi_xr, ens_mean_wrsi_xr, poi_stamp, forecast_stamp
     ens_plt.set_aspect("auto", adjustable = None)
     ens_plt.add_feature(cfeature.OCEAN, facecolor = "white", zorder = 1)
     ens_plt.add_feature(cfeature.COASTLINE, linewidth = 2)
-    ens_plt.add_feature(cfeature.BORDERS, linewidth = 2)
+    #ens_plt.add_feature(cfeature.BORDERS, linewidth = 2)
+    cntr_bound_geom=Reader(fname).geometries()
+    ens_plt.add_geometries(cntr_bound_geom,ccrs.PlateCarree(),facecolor='None', linewidth = 2)
+    plt.savefig(file_path+"/outputs/clim_fc_map_plot"+poi_stamp+"_"+forecast_stamp+"_"+loc_stamp+".png")
+    plt.close()
     # Plot anomaly
-    anom_plt = fig.add_subplot(133, projection = ccrs.PlateCarree())
+    fig = plt.figure(figsize = (10,10))
+    anom_plt = fig.add_subplot(111, projection = ccrs.PlateCarree())
     anom_plt.set_extent([np.min(lons), np.max(lons), np.min(lats), np.max(lats)])
     anom_plt.pcolormesh(lons, lats, percent_anom.T, vmin = 50, vmax = 150, cmap = RdBu_cust)
     anom_gl = anom_plt.gridlines(crs = ccrs.PlateCarree(), draw_labels = True, linewidth = 0.7, color = "black", alpha = 1, linestyle = "--")
@@ -659,9 +675,11 @@ def anom_map_plot(clim_mean_wrsi_xr, ens_mean_wrsi_xr, poi_stamp, forecast_stamp
     anom_plt.set_aspect("auto", adjustable = None)
     anom_plt.add_feature(cfeature.OCEAN, facecolor = "white", zorder = 1)
     anom_plt.add_feature(cfeature.COASTLINE, linewidth = 2)
-    anom_plt.add_feature(cfeature.BORDERS, linewidth = 2)
+    #anom_plt.add_feature(cfeature.BORDERS, linewidth = 2)
     # Save and show
-    plt.savefig(file_path+"/outputs/map_plot"+poi_stamp+"_"+forecast_stamp+"_"+loc_stamp+".png")
+    cntr_bound_geom=Reader(fname).geometries()
+    anom_plt.add_geometries(cntr_bound_geom,ccrs.PlateCarree(),facecolor='None', linewidth = 2)
+    plt.savefig(file_path+"/outputs/clim_anomaly_map_plot"+poi_stamp+"_"+forecast_stamp+"_"+loc_stamp+".png")
     plt.close()
 
 # Plot probability of lower tercile map
@@ -704,7 +722,10 @@ def prob_map_plot(clim_mean_wrsi_xr, clim_sd_wrsi_xr, ens_mean_wrsi_xr, ens_sd_w
     prob_plt.set_aspect("auto", adjustable = None)
     prob_plt.add_feature(cfeature.OCEAN, facecolor = "white", zorder = 1)
     prob_plt.add_feature(cfeature.COASTLINE, linewidth = 2)
-    prob_plt.add_feature(cfeature.BORDERS, linewidth = 2)
+    #prob_plt.add_feature(cfeature.BORDERS, linewidth = 2)
+    fname='/home/ea_ghcf_icpac.shp'
+    cntr_bound_geom=Reader(fname).geometries()
+    prob_plt.add_geometries(cntr_bound_geom,ccrs.PlateCarree(),facecolor='None', linewidth = 2)
     # Save and show
     plt.savefig(file_path+"/outputs/prob_map_plot"+poi_stamp+"_"+forecast_stamp+"_"+loc_stamp+".png")
     plt.close()
